@@ -150,7 +150,7 @@ function appendVideosToPage(page, json, counter, separator) {
             separator = false;
         }
         appendItem(page, json[i], plugin.id + route + json[i].id + ':' + escape(json[i].title),
-            json[i].title + (json[i].is_series ? colorStr('сериал', orange) : '')
+            json[i].title + (!json[i].duration && !json[i].video_total ? colorStr('сериал', orange) : '')
         );
         counter++;
         page.entries++;
@@ -311,16 +311,18 @@ new page.Route(plugin.id + ":package:(.*):(.*)", function(page, id, title) {
     for (var i in json.data.packages) {
         if (json.data.packages[i].id == id) {
             for (var j in json.data.packages[i].channels) {
-                if (json.data.packages[i].channels[j].title.match(/[M]/)) {
-                    page.appendItem(plugin.id + ':channel:' + json.data.packages[i].channels[j].id + ':' + escape(json.data.packages[i].title), 'video', {
-                        title: new RichText((json.data.packages[i].channels[j].is_available ? '' : coloredStr('$', orange)) + json.data.packages[i].channels[j].title),
-                        icon:json.data.packages[i].channels[j].image.original
+                if (json.data.packages[i].channels[j].vod_channel) {
+                    page.appendItem(plugin.id + ':channel:' + json.data.packages[i].channels[j].id + ':' + escape(json.data.packages[i].channels[j].title), 'video', {
+                        title: new RichText((json.data.packages[i].channels[j].is_available ? '' : coloredStr('$', orange)) + json.data.packages[i].channels[j].title + coloredStr(' (видеоканал)', orange)),
+                        icon:json.data.packages[i].channels[j].image.original,
+                        genre: getGenreTitle(json.data.packages[i].channels[j].genres)
                     });
                     counter++;
                 } else {
                     page.appendItem(plugin.id + ':video:' + json.data.packages[i].channels[j].id + ':' + escape(json.data.packages[i].title), 'video', {
                         title: new RichText((json.data.packages[i].channels[j].is_available ? '' : coloredStr('$', orange)) + json.data.packages[i].channels[j].title),
-                        icon:json.data.packages[i].channels[j].image.original
+                        icon:json.data.packages[i].channels[j].image.original,
+                        genre: getGenreTitle(json.data.packages[i].channels[j].genres)
                     });
                   counter++;
                 }
@@ -562,7 +564,6 @@ new page.Route(plugin.id + ":video:(.*):(.*)", function(page, id, title) {
         popup.message("Не удается проиграть видео. Возможно видео доступно только по подписке, платное или не доступно для Вашего региона.", true, false);
         return;
     }
-    setPageHeader(page, unescape(json.data.title));
     page.loading = true;
     var s1 = json.data.src.match(/(.*)\/a\/0\//);
     var s2 = json.data.src.match(/\/a\/0\/(.*)/);
@@ -589,10 +590,11 @@ new page.Route(plugin.id + ":video:(.*):(.*)", function(page, id, title) {
     };
 
     if (json.data.audio_tracks.length > 1) {
+        setPageHeader(page, json.data.title);
         for (var i in json.data.audio_tracks) {
             var videoparams = {
                 title: unescape(json.data.title) + ' (' + string.entityDecode(unescape(json.data.audio_tracks[i].lang)) + (json.data.audio_tracks[i].lang_original ? '/' + string.entityDecode(unescape(json.data.audio_tracks[i].lang_original)) : '') + ')',
-                canonicalUrl: plugin.id + ":video:" + id + ":" + title,
+                //canonicalUrl: plugin.id + ":video:" + id + ":" + title,
                 imdbid: imdbid,
                 season: season,
                 episode: episode,
