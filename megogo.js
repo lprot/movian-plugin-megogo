@@ -299,7 +299,7 @@ new page.Route(plugin.id + ":channel:(.*):(.*)", function(page, id, title) {
     //var json = getJSON(page, '/tv/channels?', '&offset=0&limit=200');
     var json = getJSON(page, '/epg?', '&external_id=' + id);
     for (var i in json.data[0].programs) 
-        page.appendItem(plugin.id + ':video:' + json.data[0].programs[i].object_id + ':' + escape(json.data[0].programs[i].title), 'file', {
+        page.appendItem(plugin.id + ':indexByID:' + json.data[0].programs[i].object_id + ':' + escape(json.data[0].programs[i].title), 'file', {
             title: new RichText(json.data[0].programs[i].title + coloredStr(' (' + json.data[0].programs[i].start + ' - ' + json.data[0].programs[i].end + ')', orange))
         });
 });
@@ -307,23 +307,28 @@ new page.Route(plugin.id + ":channel:(.*):(.*)", function(page, id, title) {
 new page.Route(plugin.id + ":package:(.*):(.*)", function(page, id, title) {
     setPageHeader(page, unescape(title));
     var json = getJSON(page, '/tv?', '');
+    var counter = 0;
     for (var i in json.data.packages) {
-        if (json.data.packages[i].id = id) {
+        if (json.data.packages[i].id == id) {
             for (var j in json.data.packages[i].channels) {
-                if (json.data.packages[i].channels[j].title.match(/[M]/)) 
+                if (json.data.packages[i].channels[j].title.match(/[M]/)) {
                     page.appendItem(plugin.id + ':channel:' + json.data.packages[i].channels[j].id + ':' + escape(json.data.packages[i].title), 'video', {
                         title: new RichText(json.data.packages[i].channels[j].title),// + coloredStr(' (' + json.data.packages[i].channels_num + ')', orange))
                         icon:json.data.packages[i].channels[j].image.original
                     });
-                else
+                    counter++;
+                } else {
                     page.appendItem(plugin.id + ':video:' + json.data.packages[i].channels[j].id + ':' + escape(json.data.packages[i].title), 'video', {
                         title: new RichText(json.data.packages[i].channels[j].title),// + coloredStr(' (' + json.data.packages[i].channels_num + ')', orange))
                         icon:json.data.packages[i].channels[j].image.original
                     });
+                  counter++;
+                }
             }
             break;
         }
-    }    
+    }
+    page.metadata.title += ' (' + counter + ')'
 });
 
 // Shows genres of the category
@@ -428,7 +433,7 @@ new page.Route(plugin.id + ':directory:(.*):(.*)', function(page, id, title) {
 // Shows video page
 new page.Route(plugin.id + ':indexByID:(.*):(.*)', function(page, id, title) {
     setPageHeader(page, unescape(title));
-    var json = getJSON(page, '/video/info?', 'id=' + id);
+    var json = getJSON(page, '/video/info?', 'id=' + id + '&root_object=1');
     if (json.result == 'error') {
         page.error('Извините, видео не доступно / Sorry, video is not available :(');
         return;
@@ -878,11 +883,17 @@ function search(page, url, params, limit) {
     page.paginator = loader;
 }
 
+function escapeSpecials(str) {
+    return str.replace(/[;,#_:@=!~'\-\/\\\?\&\+\$\.\*\(\)]/g, function(c) {
+        return '%' + c.charCodeAt(0).toString(16);
+    });
+}
+
 new page.Route(plugin.id + ":search:(.*)", function(page, query) {
     setPageHeader(page, plugin.title);
-    search(page, '/search?', 'text=' + query, 20);
+    search(page, '/search?', 'text=' + escapeSpecials(query), 20);
 });
 
 page.Searcher(plugin.id, logo, function(page, query) {
-    search(page, '/search?', 'text=' + query, 20);
+    search(page, '/search?', 'text=' + escapeSpecials(query), 20);
 });
