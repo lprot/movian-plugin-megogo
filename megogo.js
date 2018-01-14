@@ -880,9 +880,9 @@ function search(page, url, params, limit) {
 
 new page.Route(plugin.id + ":search:(.*)", function(page, query) {
     setPageHeader(page, plugin.title);
-    search(page, '/search?', 'text=' + encodeURIComponent(query), 20);
+    search(page, '/search?', 'text=' + query, 20);
 });
 
 page.Searcher(plugin.id, logo, function(page, query) {
-    search(page, '/search?', 'text=' + encodeURIComponent(query), 20);
+    search(page, '/search?', 'text=' + query, 20);
 });
