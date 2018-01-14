@@ -4,7 +4,7 @@
 	"homepage": "http://github.com/lprot/movian-plugin-megogo",
 	"title": "MEGOGO",
 	"synopsis": "MEGOGO.NET - лучший онлайн кинотеатр с бесплатным легальным контентом",
-	"version": "0.9.5",
+	"version": "0.9.6",
         "file": "megogo.js",
 	"showtimeVersion": "4.8",
 	"type": "ecmascript",

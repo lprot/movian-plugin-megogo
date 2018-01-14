@@ -313,13 +313,13 @@ new page.Route(plugin.id + ":package:(.*):(.*)", function(page, id, title) {
             for (var j in json.data.packages[i].channels) {
                 if (json.data.packages[i].channels[j].title.match(/[M]/)) {
                     page.appendItem(plugin.id + ':channel:' + json.data.packages[i].channels[j].id + ':' + escape(json.data.packages[i].title), 'video', {
-                        title: new RichText(json.data.packages[i].channels[j].title),// + coloredStr(' (' + json.data.packages[i].channels_num + ')', orange))
+                        title: new RichText((json.data.packages[i].channels[j].is_available ? '' : coloredStr('$', orange)) + json.data.packages[i].channels[j].title),
                         icon:json.data.packages[i].channels[j].image.original
                     });
                     counter++;
                 } else {
                     page.appendItem(plugin.id + ':video:' + json.data.packages[i].channels[j].id + ':' + escape(json.data.packages[i].title), 'video', {
-                        title: new RichText(json.data.packages[i].channels[j].title),// + coloredStr(' (' + json.data.packages[i].channels_num + ')', orange))
+                        title: new RichText((json.data.packages[i].channels[j].is_available ? '' : coloredStr('$', orange)) + json.data.packages[i].channels[j].title),
                         icon:json.data.packages[i].channels[j].image.original
                     });
                   counter++;
