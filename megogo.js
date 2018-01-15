@@ -28,10 +28,10 @@ var logo = Plugin.path + plugin.icon;
 
 var BASE_URL = 'http://megogo.net',
     API = 'https://api.megogo.net/v1';
-var logged = false,
-    credentials, k1 = '_android_j7', k2 = 'a0486cf845',
+
+var logged = config = false, users, digest, credentials;
+var k1 = '_android_j7', k2 = 'a0486cf845',
     UA = 'Dalvik/2.1.0 (Linux; U; Android 7.0)'
-var users, config = false, digest;
 
 function trim(s) {
     return s.replace(/(\r\n|\n|\r)/gm, "").replace(/(^\s*)|(\s*$)/gi, "").replace(/[ ]{2,}/gi, " ").replace(/\t/g, '');
@@ -272,10 +272,10 @@ function appendItem(page, json, route, title) {
 function processVideoItem(page, json, json2, genres) {
     if (json2) { // season
         for (var i in json2) {
-            appendItem(page, json.data, plugin.id + ':season:' + json2[i].id + ':' +
-                escape(json.data.title + String.fromCharCode(8194) + '- ' + json2[i].title +
-                    (json2[i].title_original ? ' | ' + json2[i].title_original : '')) + ':' + i,
-                json2[i].title + (json2[i].title_original ? ' | ' +
+            appendItem(page, json.data, plugin.id + ':season:' + json2[i].id + ':' + // route
+                escape(json.data.title + (json.data.title_original ? ' | ' + json.data.title_original : '') + 
+                    String.fromCharCode(8194) + '- ' + json2[i].title) + ':' + i,
+                json2[i].title + (json2[i].title_original ? ' | ' + // title
                     json2[i].title_original : '') + ' (' + json2[i].total + ' серий)'
             );
         }
@@ -344,6 +344,8 @@ new page.Route(plugin.id + ":package:(.*):(.*)", function(page, id, title) {
 
 // Shows genres of the category
 new page.Route(plugin.id + ":genres:(.*):(.*)", function(page, id, title) {
+    setPageHeader(page, unescape(title));
+
     if (id == 23) {
         setPageHeader(page, 'ТВ подписки');
         var json = getJSON(page, '/tv?', '');
@@ -355,7 +357,6 @@ new page.Route(plugin.id + ":genres:(.*):(.*)", function(page, id, title) {
         }
         return;
     }
-    setPageHeader(page, unescape(title));
 
     for (var i in config.data.categories) {
         if (config.data.categories[i].id == id) {
@@ -613,6 +614,8 @@ function getIMDBid(title) {
 
 // Play video
 new page.Route(plugin.id + ":video:(.*):(.*)", function(page, id, title) {
+    if (!config) loginAndGetConfig(page, false);
+
     var json = getJSON(page, '/stream?', 'video_id=' + id);
     if (!json.data.src) {
         popup.message("Не удается проиграть видео. Возможно видео доступно только по подписке, платное или не доступно для Вашего региона.", true, false);
@@ -805,6 +808,8 @@ function constructMultiopt(multiOpt, storageVariable) {
 var store = require('movian/store').create('options');
 if (!store.showPaidContent)
     store.showPaidContent = JSON.stringify([[true, "Да", true], [false, "Нет"]]);
+
+service.showPaidContent = eval(store.showPaidContent)[0][2];
 
 
 function constructMultiopt(multiOpt, value) {
