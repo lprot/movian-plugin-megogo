@@ -82,13 +82,13 @@ function getJSON(page, url, params) {
     var numOfTries = 0;
     while (numOfTries < 10) {
         var requestUrl = API + url + encodeURI(params) + (url.match(/\?/) ? '&sign=' : '?sign=') + cryptodigest('md5', params.replace(/\&/g, '') + k2) + k1;
-        //print(requestUrl);
+        log(requestUrl);
         var json = JSON.parse(http.request(requestUrl, {
             headers: {
                 'User-Agent': UA
             }
         }));
-        //print(JSON.stringify(json));
+        //log(JSON.stringify(json));
         if (json.result == 'ok') break;
         numOfTries++;
     }
@@ -282,7 +282,7 @@ function processVideoItem(page, json, json2, genres) {
     } else {
         appendItem(page, json.data, plugin.id + ':video:' + json.data.id + ':' +
             escape(json.data.title + (json.data.title_original ? ' | ' +
-                json.data.title_original : '')),
+                json.data.title_original : '')) + ':' + escape(json.data.image.original),
             json.data.title + (json.data.title_original ? ' | ' +
                 json.data.title_original : '')
         );
@@ -328,7 +328,7 @@ new page.Route(plugin.id + ":package:(.*):(.*)", function(page, id, title) {
                     });
                     counter++;
                 } else {
-                    page.appendItem(plugin.id + ':video:' + json.data.packages[i].channels[j].id + ':' + escape(json.data.packages[i].title), 'video', {
+                    page.appendItem(plugin.id + ':video:' + json.data.packages[i].channels[j].id + ':' + escape(json.data.packages[i].channels[j].title) + ':' + escape(json.data.packages[i].channels[j].image.original), 'video', {
                         title: new RichText((json.data.packages[i].channels[j].is_available ? '' : coloredStr('$', orange)) + json.data.packages[i].channels[j].title),
                         icon:json.data.packages[i].channels[j].image.original,
                         genre: getGenreTitle(json.data.packages[i].channels[j].genres)
@@ -459,7 +459,7 @@ new page.Route(plugin.id + ':indexByID:(.*):(.*)', function(page, id, title) {
         processVideoItem(page, json, 0, genres);
 
     if (json.data.trailer_id) {
-        page.appendItem(plugin.id + ':video:' + json.data.trailer_id + ':' + escape('Трейлер: ' + json.data.title + (json.data.title_original ? ' | ' + json.data.title_original : '')), 'video', {
+        page.appendItem(plugin.id + ':video:' + json.data.trailer_id + ':' + escape('Трейлер: ' + json.data.title + (json.data.title_original ? ' | ' + json.data.title_original : '')) + ':' + escape(logo), 'video', {
             title: 'Трейлер'
         });
     }
@@ -556,7 +556,7 @@ new page.Route(plugin.id + ":season:(.*):(.*):(.*)", function(page, id, title, s
     setPageHeader(page, unescape(title));
     var json = getJSON(page, '/video/info?', 'id=' + id + '&root_object=1');
     for (var i in json.data.season_list[seasonNum].episode_list) {
-        page.appendItem(plugin.id + ':video:' + json.data.season_list[seasonNum].episode_list[i].id + ':' + escape(unescape(title) + ' - ' + json.data.season_list[seasonNum].episode_list[i].title), "video", {
+        page.appendItem(plugin.id + ':video:' + json.data.season_list[seasonNum].episode_list[i].id + ':' + escape(unescape(title) + ' - ' + json.data.season_list[seasonNum].episode_list[i].title) + ':' + escape(json.data.season_list[seasonNum].episode_list[i].image), "video", {
             title: json.data.season_list[seasonNum].episode_list[i].title,
             icon: json.data.season_list[seasonNum].episode_list[i].image,
             duration: json.data.season_list[seasonNum].episode_list[i].duration
@@ -613,9 +613,8 @@ function getIMDBid(title) {
 };
 
 // Play video
-new page.Route(plugin.id + ":video:(.*):(.*)", function(page, id, title) {
+new page.Route(plugin.id + ":video:(.*):(.*):(.*)", function(page, id, title, icon) {
     if (!config) loginAndGetConfig(page, false);
-
     var json = getJSON(page, '/stream?', 'video_id=' + id);
     if (!json.data.src) {
         popup.message("Не удается проиграть видео. Возможно видео доступно только по подписке, платное или не доступно для Вашего региона.", true, false);
@@ -655,6 +654,7 @@ new page.Route(plugin.id + ":video:(.*):(.*)", function(page, id, title) {
                 imdbid: imdbid,
                 season: season,
                 episode: episode,
+                icon: unescape(icon),
                 sources: [{
                     url: "hls:" + (s1 ? s1[1] + "/a/" + json.data.audio_tracks[i].index + "/" + s2[1] : json.data.src)
                 }],
@@ -671,10 +671,11 @@ new page.Route(plugin.id + ":video:(.*):(.*)", function(page, id, title) {
     page.type = "video";
     var videoparams = {
         title: unescape(title),
-        canonicalUrl: plugin.id + ":video:" + id + ":" + title,
+        canonicalUrl: plugin.id + ":video:" + id + ":" + title + ':' + icon,
         imdbid: imdbid,
         season: season,
         episode: episode,
+        icon: unescape(icon),
         sources: [{
             url: "hls:" + json.data.src
         }],
