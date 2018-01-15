@@ -274,22 +274,27 @@ function processVideoItem(page, json, json2, genres) {
         for (var i in json2) {
             appendItem(page, json.data, plugin.id + ':season:' + json2[i].id + ':' +
                 escape(json.data.title + String.fromCharCode(8194) + '- ' + json2[i].title +
-                    (json2[i].title_orig ? ' | ' + json2[i].title_orig : '')) + ':' + i,
-                json2[i].title + (json2[i].title_orig ? ' | ' +
-                    json2[i].title_orig : '') + ' (' + json2[i].total + ' серий)'
+                    (json2[i].title_original ? ' | ' + json2[i].title_original : '')) + ':' + i,
+                json2[i].title + (json2[i].title_original ? ' | ' +
+                    json2[i].title_original : '') + ' (' + json2[i].total + ' серий)'
             );
         }
     } else {
         appendItem(page, json.data, plugin.id + ':video:' + json.data.id + ':' +
-            escape(json.data.title + (json.data.title_orig ? ' | ' +
-                json.data.title_orig : '')),
-            json.data.title + (json.data.title_orig ? ' | ' +
-                json.data.title_orig : '')
+            escape(json.data.title + (json.data.title_original ? ' | ' +
+                json.data.title_original : '')),
+            json.data.title + (json.data.title_original ? ' | ' +
+                json.data.title_original : '')
         );
     }
 }
 
 service.create(plugin.title, plugin.id + ":start", 'video', true, logo);
+
+settings.globalSettings(plugin.id, plugin.title, logo, plugin.synopsis);
+settings.createBool('debug', 'Enable debug logging',  false, function(v) {
+    service.debug = v;
+});
 
 function getGenreTitle(genre) {
     for (var k in config.data.genres) 
@@ -445,7 +450,7 @@ new page.Route(plugin.id + ':indexByID:(.*):(.*)', function(page, id, title) {
         return;
     }
     if (json.data.title_original) 
-        page.metadata.title += ' / ' + json.data.title_original;
+        page.metadata.title += ' | ' + json.data.title_original;
     var genres = getGenre(json.data.categories, json.data.genres);
     if (json.data.is_series)
         processVideoItem(page, json, json.data.season_list, genres);
@@ -453,14 +458,14 @@ new page.Route(plugin.id + ':indexByID:(.*):(.*)', function(page, id, title) {
         processVideoItem(page, json, 0, genres);
 
     if (json.data.trailer_id) {
-        page.appendItem(plugin.id + ':video:' + json.data.trailer_id + ':' + escape(json.data.title + (json.data.title_orig ? ' | ' + json.data.title_orig : '')), 'video', {
+        page.appendItem(plugin.id + ':video:' + json.data.trailer_id + ':' + escape('Трейлер: ' + json.data.title + (json.data.title_original ? ' | ' + json.data.title_original : '')), 'video', {
             title: 'Трейлер'
         });
     }
 
     // Screenshots
     if (json.data.screenshots[0]) {
-        page.appendItem(plugin.id + ':screenshots:' + escape(json.data.title + (json.data.title_orig ? ' | ' + json.data.title_orig : '')) + ':' + id, 'directory', {
+        page.appendItem(plugin.id + ':screenshots:' + escape(json.data.title + (json.data.title_original ? ' | ' + json.data.title_original : '')) + ':' + id, 'directory', {
             title: 'Фото'
         });
     }
@@ -558,12 +563,52 @@ new page.Route(plugin.id + ":season:(.*):(.*):(.*)", function(page, id, title, s
     }
 });
 
+function log(str) {
+    if (service.debug) console.log(str);
+}
+
 // Search IMDB ID by title
 function getIMDBid(title) {
-    var resp = http.request('http://www.imdb.com/find?ref_=nv_sr_fn&q=' + encodeURIComponent(string.entityDecode(unescape(title))).toString()).toString();
-    var imdbid = resp.match(/<a href="\/title\/(tt\d+)\//);
-    if (imdbid) return imdbid[1];
-    return imdbid;
+    var imdbid = null;
+    var title = string.entityDecode(unescape(title)).toString();
+    log('Splitting the title for IMDB ID request: ' + title);
+    var splittedTitle = title.split('|');
+    if (splittedTitle.length == 1)
+        splittedTitle = title.split('/');
+    if (splittedTitle.length == 1)
+        splittedTitle = title.split('-');
+    log('Splitted title is: ' + splittedTitle);
+    if (splittedTitle[1]) { // first we look by original title
+        var cleanTitle = splittedTitle[1];
+        log('Trying to get IMDB ID for: ' + cleanTitle);
+        resp = http.request('http://www.imdb.com/find?ref_=nv_sr_fn&q=' + encodeURIComponent(cleanTitle)).toString();
+        imdbid = resp.match(/class="findResult[\s\S]*?<a href="\/title\/(tt\d+)\//);
+        if (!imdbid && cleanTitle.indexOf('/') != -1) {
+            splittedTitle2 = cleanTitle.split('/');
+            for (var i in splittedTitle2) {
+                log('Trying to get IMDB ID (1st attempt) for: ' + splittedTitle2[i].trim());
+                resp = http.request('http://www.imdb.com/find?ref_=nv_sr_fn&q=' + encodeURIComponent(splittedTitle2[i].trim())).toString();
+                imdbid = resp.match(/class="findResult[\s\S]*?<a href="\/title\/(tt\d+)\//);
+                if (imdbid) break;
+            }
+        }
+    }
+    if (!imdbid)
+        for (var i in splittedTitle) {
+            if (i == 1) continue; // we already checked that
+            var cleanTitle = splittedTitle[i].trim();
+            log('Trying to get IMDB ID (2nd attempt) for: ' + cleanTitle);
+            resp = http.request('http://www.imdb.com/find?ref_=nv_sr_fn&q=' + encodeURIComponent(cleanTitle)).toString();
+            imdbid = resp.match(/class="findResult[\s\S]*?<a href="\/title\/(tt\d+)\//);
+            if (imdbid) break;
+        }
+
+    if (imdbid) {
+        log('Got following IMDB ID: ' + imdbid[1]);
+        return imdbid[1];
+    }
+    log('Cannot get IMDB ID :(');
+    return '';
 };
 
 // Play video
@@ -599,7 +644,7 @@ new page.Route(plugin.id + ":video:(.*):(.*)", function(page, id, title) {
     };
 
     if (json.data.audio_tracks.length > 1) {
-        setPageHeader(page, json.data.title);
+        setPageHeader(page, unescape(title));
         for (var i in json.data.audio_tracks) {
             var videoparams = {
                 title: unescape(json.data.title) + ' (' + string.entityDecode(unescape(json.data.audio_tracks[i].lang)) + (json.data.audio_tracks[i].lang_original ? '/' + string.entityDecode(unescape(json.data.audio_tracks[i].lang_original)) : '') + ')',
@@ -622,9 +667,9 @@ new page.Route(plugin.id + ":video:(.*):(.*)", function(page, id, title) {
     }
     page.type = "video";
     var videoparams = {
-        title: unescape(json.data.title),
+        title: unescape(title),
         canonicalUrl: plugin.id + ":video:" + id + ":" + title,
-        imdbid: getIMDBid(title),
+        imdbid: imdbid,
         season: season,
         episode: episode,
         sources: [{
