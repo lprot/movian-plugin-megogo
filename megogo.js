@@ -194,10 +194,14 @@ function getReason(json) {
 
 function appendItem(page, json, route, title) {
     var genres = json.categories ? getGenre(json.categories, json.genres) : '';
+    var backdrops = [];
+    for (var i in json.screenshots) 
+        backdrops.push({url: json.screenshots[i].big});
     var item = page.appendItem(route, "video", {
         title: new RichText(getReason(json) + title),
         year: +parseInt(json.year),
         genre: genres,
+        backdrops: backdrops,
         icon: json.image.image_original ? json.image.image_original : json.image.small,
         rating: json.rating_kinopoisk ? json.rating_kinopoisk * 10 : null,
         duration: json.duration ? +parseInt(json.duration) : null,
@@ -208,7 +212,7 @@ function appendItem(page, json, route, title) {
             (json.isFavorite ? coloredStr('Фильм находится в Избранном', orange) + '<br>' : '') +
             (json.like ? coloredStr('Лайков: ', orange) + coloredStr(json.like, green) + coloredStr(' Дизлайков: ', orange) + coloredStr(json.dislike, red) : '') +
             (json.comments_num ? coloredStr(' Комментариев: ', orange) + unescape(json.comments_num) : '') +
-            (json.country ? coloredStr('<br>Страна: ', orange) + unescape(json.country) : '') +
+            (json.country ? coloredStr(' Страна: ', orange) + unescape(json.country) : '') +
             (json.video_total ? coloredStr('<br>К-во видео: ', orange) + unescape(json.video_total) : '') +
             (json.description ? coloredStr('<br>Описание: ', orange) +
                 trim(string.entityDecode(unescape(json.description.replace(/&#151;/g, '—')))) : ''))
@@ -448,6 +452,12 @@ new page.Route(plugin.id + ':indexByID:(.*):(.*)', function(page, id, title) {
     else
         processVideoItem(page, json, 0, genres);
 
+    if (json.data.trailer_id) {
+        page.appendItem(plugin.id + ':video:' + json.data.trailer_id + ':' + escape(json.data.title + (json.data.title_orig ? ' | ' + json.data.title_orig : '')), 'video', {
+            title: 'Трейлер'
+        });
+    }
+
     // Screenshots
     if (json.data.screenshots[0]) {
         page.appendItem(plugin.id + ':screenshots:' + escape(json.data.title + (json.data.title_orig ? ' | ' + json.data.title_orig : '')) + ':' + id, 'directory', {
@@ -539,7 +549,7 @@ new page.Route(plugin.id + ':indexByID:(.*):(.*)', function(page, id, title) {
 new page.Route(plugin.id + ":season:(.*):(.*):(.*)", function(page, id, title, seasonNum) {
     setPageHeader(page, unescape(title));
     var json = getJSON(page, '/video/info?', 'id=' + id + '&root_object=1');
-    for (var i = 0; i < json.data.season_list[seasonNum].total; i++) {
+    for (var i in json.data.season_list[seasonNum].episode_list) {
         page.appendItem(plugin.id + ':video:' + json.data.season_list[seasonNum].episode_list[i].id + ':' + escape(unescape(title) + ' - ' + json.data.season_list[seasonNum].episode_list[i].title), "video", {
             title: json.data.season_list[seasonNum].episode_list[i].title,
             icon: json.data.season_list[seasonNum].episode_list[i].image,
@@ -559,7 +569,6 @@ function getIMDBid(title) {
 // Play video
 new page.Route(plugin.id + ":video:(.*):(.*)", function(page, id, title) {
     var json = getJSON(page, '/stream?', 'video_id=' + id);
-
     if (!json.data.src) {
         popup.message("Не удается проиграть видео. Возможно видео доступно только по подписке, платное или не доступно для Вашего региона.", true, false);
         return;
@@ -574,7 +583,7 @@ new page.Route(plugin.id + ":video:(.*):(.*)", function(page, id, title) {
     if (series[1]) {
         series = series[1].split('-');
         season = +series[1].match(/(\d+)/)[1];
-        episode = +series[2].match(/(\d+)/)[1];
+        episode = series[2].match(/(\d+)/) ? +series[2].match(/(\d+)/)[1] : null;
     }
     var imdbid = getIMDBid(imdbTitle);
 
