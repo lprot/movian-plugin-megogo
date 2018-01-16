@@ -629,7 +629,7 @@ new page.Route(plugin.id + ":video:(.*):(.*):(.*)", function(page, id, title, ic
     var imdbTitle = series[0];
     if (series[1]) {
         series = series[1].split('-');
-        season = +series[1].match(/(\d+)/)[1];
+        season = series[1].match(/(\d+)/) ? +series[1].match(/(\d+)/)[1] : null;
         episode = series[2].match(/(\d+)/) ? +series[2].match(/(\d+)/)[1] : null;
     }
     var imdbid = getIMDBid(imdbTitle);
