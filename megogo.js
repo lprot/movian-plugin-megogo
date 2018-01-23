@@ -928,6 +928,7 @@ new page.Route(plugin.id + ":start", function(page) {
 });		
 
 function search(page, url, params, limit) {
+    setPageHeader(page, plugin.title);
     loginAndGetConfig(page, false);
     page.entries = 0;
     var offset = counter = 0, tryToSearch = true;
@@ -952,7 +953,6 @@ function escapeSpecials(str) {
 }
 
 new page.Route(plugin.id + ":search:(.*)", function(page, query) {
-    setPageHeader(page, plugin.title);
     search(page, '/search?', 'text=' + escapeSpecials(query), 20);
 });
 
