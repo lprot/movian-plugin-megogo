@@ -200,22 +200,18 @@ function appendItem(page, json, route, title) {
     var item = page.appendItem(route, "video", {
         title: new RichText(getReason(json) + title),
         year: +parseInt(json.year),
-        genre: genres,
+        genre: new RichText(genres +
+            (json.country ? coloredStr('<br>Страна: ', orange) + unescape(json.country) : '')),
         backdrops: backdrops,
         icon: json.image.image_original ? json.image.image_original : json.image.small,
         rating: json.rating_kinopoisk ? json.rating_kinopoisk * 10 : null,
         duration: json.duration ? +parseInt(json.duration) : null,
-        description: new RichText(
-            (json.is_exclusive ? coloredStr('Эксклюзивно на megogo!', red) + '<br>' : '') +
-            (json.availableReason == 'tvod' && json.purchase_info ? coloredStr('Стоимость фильма: ', orange) + json.purchase_info.tvod.subscriptions[0].tariffs[0].price + ' ' + json.purchase_info.tvod.subscriptions[0].currency + '<br>' : '') +
-            (json.vote ? coloredStr('Вы голосовали за этот фильм: ', orange) + (json.vote ? 'Нравится' : 'Не нравится') + '<br>' : '') +
-            (json.isFavorite ? coloredStr('Фильм находится в Избранном', orange) + '<br>' : '') +
-            (json.like ? coloredStr('Лайков: ', orange) + coloredStr(json.like, green) + coloredStr(' Дизлайков: ', orange) + coloredStr(json.dislike, red) : '') +
+        tagline: new RichText((json.is_exclusive ? coloredStr('Эксклюзивно на megogo! ', red) : '') +
+            (json.video_total ? coloredStr('К-во видео: ', orange) + unescape(json.video_total) : '')),
+        description: new RichText((json.like ? coloredStr('Лайков: ', orange) + coloredStr(json.like, green) + coloredStr(' Дизлайков: ', orange) + coloredStr(json.dislike, red) : '') +
             (json.comments_num ? coloredStr(' Комментариев: ', orange) + unescape(json.comments_num) : '') +
-            (json.country ? coloredStr(' Страна: ', orange) + unescape(json.country) : '') +
-            (json.video_total ? coloredStr('<br>К-во видео: ', orange) + unescape(json.video_total) : '') +
-            (json.description ? coloredStr('<br>Описание: ', orange) +
-                trim(string.entityDecode(unescape(json.description.replace(/&#151;/g, '—')))) : ''))
+            (json.description ? coloredStr('<br>', orange) +
+            trim(string.entityDecode(unescape(json.description.replace(/&#151;/g, '—')))) : ''))
     });
     item.id = json.id;
     item.vote = json.vote;
@@ -457,12 +453,16 @@ new page.Route(plugin.id + ':indexByID:(.*):(.*)', function(page, id, title) {
         processVideoItem(page, json, json.data.season_list, genres);
     else
         processVideoItem(page, json, 0, genres);
-
+        
     if (json.data.trailer_id) {
         page.appendItem(plugin.id + ':video:' + json.data.trailer_id + ':' + escape('Трейлер: ' + json.data.title + (json.data.title_original ? ' | ' + json.data.title_original : '')) + ':' + escape(logo), 'video', {
             title: 'Трейлер'
         });
     }
+
+    page.appendItem(json.data.image.original, 'image', {
+        title: 'Обложка'
+    });
 
     // Screenshots
     if (json.data.screenshots[0]) {
